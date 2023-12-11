@@ -2,7 +2,7 @@ import React from "react";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "./utils/http";
-import SignIn from "./pages/SignIn";
+import SignIn from "./pages/Signin";
 import Signup from "./pages/Signup";
 import PrivateRoute from "./components/PrivateRoute";
 import QRScan from "./pages/QRScan";
