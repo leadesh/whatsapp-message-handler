@@ -14,6 +14,7 @@ const {
 const MyError = require("./config/error");
 
 const app = express();
+console.log(path.join(__dirname, "client", "dist", "index.html"));
 
 mongoConnection();
 app.use(cookieParser());
@@ -54,6 +55,7 @@ async function start(client, id) {
 
 app.post("/api/signup", async (req, res, next) => {
   try {
+    console.log("aaya hai");
     await createSignUpValidation.validateAsync(req.body);
     const { username, password, email } = req.body;
     const hashedPassword = await bcrypt.hash(password, 10);
