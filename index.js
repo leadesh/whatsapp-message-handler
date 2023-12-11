@@ -32,6 +32,10 @@ async function start(client, id) {
   await user.save();
   console.log(userInfo);
 
+  process.on("SIGINT", function () {
+    client.close();
+  });
+
   app.get("/api", verifyAccessToken, async (req, res, next) => {
     try {
       const chats = await client.getAllChats();
