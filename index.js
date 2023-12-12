@@ -25,32 +25,57 @@ app.use(express.static(path.join(__dirname, "client", "dist")));
 
 const port = process.env.PORT || 3000;
 
-async function start(client, id) {
+async function start(client, id, res) {
   const userInfo = await client.getHostDevice();
   const user = await User.findById(id);
   user.phoneNumber = userInfo.id.user;
   await user.save();
   console.log(userInfo);
+  res.write("data: Login success\n\n");
+  res.end();
 
-  process.on("SIGINT", function () {
-    client.close();
+  client.onMessage((message) => {
+    if (message.body === "Hi" && message.isGroupMsg === false) {
+      client
+        .sendText(message.from, "Welcome Venom 🕷")
+        .then((result) => {
+          console.log("Result: ", result); //return object success
+        })
+        .catch((erro) => {
+          console.error("Error when sending: ", erro); //return object error
+        });
+    }
   });
 
   app.get("/api", verifyAccessToken, async (req, res, next) => {
     try {
       const chats = await client.getAllChats();
       const groups = chats.filter((chat) => chat.isGroup === true);
-      const messages = await Promise.all(
+      let messages = await Promise.all(
         groups.map(async (chat) => {
-          const groupMsgs = await client.getAllMessagesInChat(
+          let groupMsgs = await client.getAllMessagesInChat(
             chat.id._serialized
           );
-          return {
-            [chat.contact.name]: groupMsgs,
-          };
+          groupMsgs = groupMsgs.filter(
+            (message) => message.groupInfo.name !== "Me"
+          );
+          const newGroupMsgs = groupMsgs.map((message) => {
+            return {
+              username: message.sender?.pushname || null,
+              message: message.content,
+              contact: message.sender?.id?.user || null,
+              timestamp: message.timestamp,
+              groupName: message.groupInfo.name,
+            };
+          });
+          return newGroupMsgs;
         })
       );
-      res.status(200).json(messages);
+
+      let processedMessages = messages.flat().sort((a, b) => {
+        return b.timestamp - a.timestamp;
+      });
+      res.status(200).json(processedMessages);
     } catch (error) {
       next(error);
     }
@@ -59,7 +84,6 @@ async function start(client, id) {
 
 app.post("/api/signup", async (req, res, next) => {
   try {
-    console.log("aaya hai");
     await createSignUpValidation.validateAsync(req.body);
     const { username, password, email } = req.body;
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -118,11 +142,10 @@ app.get("/api/getQR", verifyAccessToken, (req, res, next) => {
 app.get("/api/createSession", verifyAccessToken, async (req, res, next) => {
   const id = req.userId;
   res.setHeader("Content-Type", "text/event-stream");
-  res.setHeader("Cache-Control", "no-cache");
   res.setHeader("Connection", "keep-alive");
 
-  venom
-    .create(
+  try {
+    const client = await venom.create(
       `${id}`,
       (base64Qr, asciiQR, attempts, urlCode) => {
         console.log(asciiQR);
@@ -149,20 +172,15 @@ app.get("/api/createSession", verifyAccessToken, async (req, res, next) => {
       },
       (statusSession, session) => {
         console.log("Status Session: ", statusSession);
-        if (statusSession === "successChat") {
-          res.write("data: Login success\n\n");
-          res.end();
-        }
         console.log("Session name: ", session);
       },
       { logQR: false }
-    )
-    .then((client) => {
-      start(client, id);
-    })
-    .catch((erro) => {
-      console.log(erro);
-    });
+    );
+
+    return await start(client, id, res);
+  } catch (error) {
+    next(error);
+  }
 });
 
 app.get("*", (req, res) => {

@@ -18,7 +18,7 @@ export const createWhatsappServer = async () => {
   return response.statusText;
 };
 
-export const getQRCode = async () => {
-  const response = await axios.get("/api/getQR");
+export const getMessages = async () => {
+  const response = await axios.get("/api");
   return response.data;
 };

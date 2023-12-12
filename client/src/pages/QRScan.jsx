@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from "react";
-import { createWhatsappServer, getQRCode } from "../utils/http";
 import { useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 
